@@ -29,7 +29,7 @@ class Player(Base):
     speed_y=Column(Integer,default=0)
     def __init__(self,name,address):
         self.name=name
-        self.address=address
+        self.addres=address
 Base.metadata.create_all(engine)
 class LocalPlayer():
    def __init__(self,id,name,sock,address):
@@ -45,6 +45,23 @@ class LocalPlayer():
        self.abs_speed=1
        self.speed_x=0
        self.speed_y=0
+   def update(self):
+       self.x+=self.speed_x
+       self.y+=self.speed_y
+   def change_speed(self,vector):
+       vector=find(vector)
+
+
+
+def find(vector):
+    first=vector.find('<')
+    second=vector.find('>')
+    if first<second and first>=0:
+        result=vector[first+1:second]
+        result=result.split(',')
+        result=list(map(float,result))
+        return result
+    return''
 mainsocket=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 mainsocket.setsockopt(socket.IPPROTO_TCP,socket.TCP_NODELAY,1)
 mainsocket.bind(('localhost',10000))
@@ -66,11 +83,15 @@ while run:
         for user in data:
             localPlayer=LocalPlayer(user.id,'name',newsocket,addr)
             players[user.id]=localPlayer
-    except:
+        print(players)
+    except BlockingIOError:
         pass
+    except Exception as e:
+        print(e)
     for id in list(players):
         try:
             data=players[id].sock.recv(1024).decode()
+            players[id].change_speed(data)
             print(data)
         except:
             pass
@@ -82,9 +103,20 @@ while run:
             del players[id]
             s.query(Player).filter(Player.id==id).delete()
             s.commit()
+            print('игрок отключен')
     for event in pygame.event.get():
         if event.type==pygame.QUIT:
             run=False
+    screen.fill('black')
+    for id in list(players):
+        players[id].update()
+    for id in players:
+        player=players[id]
+        x=player.x*WIDTHSERVER//WIDTHROOM
+        y=player.y*HEIGHTSERVER//HEIGHTROOM
+        size=player.size*WIDTHSERVER//WIDTHROOM
+        pygame.draw.circle(screen,'red',(x,y),size)
+    pygame.display.flip()
 
 
 
